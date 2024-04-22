@@ -169,7 +169,7 @@ class VDA5050Connector : public VDA5050Node {
    * Sets the header timestamp and publishes the state message. Updates the headerId after
    * publishing
    */
-  void PublishState();
+  void PublishState(std::string const& message_reason);
 
   /**
    * Sets the header timestamp and publishes the visualization message. Updates the headerId after
@@ -189,7 +189,7 @@ class VDA5050Connector : public VDA5050Node {
    * Checks all the logic within the state daemon. For example, it checks
    * if 30 seconds have passed without update.
    */
-  void PublishStateOnTrigger();
+  void PublishStateOnTrigger(std::string const& message_reason);
 
   // -------- All order callbacks --------
 
