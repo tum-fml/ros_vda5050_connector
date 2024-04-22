@@ -56,13 +56,13 @@ VDA5050Connector::VDA5050Connector() : state(State()), order(Order()) {
   private_nh.param<double>("publish_periods/visualization_msg", visMsgPeriod, 0.3);
   private_nh.param<double>("publish_periods/conn_msg", connMsgPeriod, 15.0);
 
-  stateTimer = nh.createTimer(
-      ros::Duration(stateMsgPeriod), std::bind(&VDA5050Connector::PublishState, this));
+  stateTimer = nh.createTimer(ros::Duration(stateMsgPeriod),
+      std::bind(&VDA5050Connector::PublishState, this, "Periodic message"));
   visTimer = nh.createTimer(
       ros::Duration(visMsgPeriod), std::bind(&VDA5050Connector::PublishVisualization, this));
   connTimer = nh.createTimer(
       ros::Duration(connMsgPeriod), std::bind(&VDA5050Connector::PublishConnection, this, true));
-  newPublishTrigger = true;
+  PublishStateOnTrigger("BootTime message");
 }
 
 void VDA5050Connector::LinkPublishTopics(ros::NodeHandle* nh) {
@@ -247,7 +247,7 @@ void VDA5050Connector::OrderCallback(const vda5050_msgs::Order::ConstPtr& msg) {
   }
 
   // Send a new state message on orders and order updates.
-  newPublishTrigger = true;
+  PublishStateOnTrigger("Order reception");
 }
 
 void VDA5050Connector::InstantActionCallback(const vda5050_msgs::InstantAction::ConstPtr& msg) {
@@ -261,7 +261,7 @@ void VDA5050Connector::OrderStateCallback(const vda5050_msgs::State::ConstPtr& m
   // Read required order state information from the prefilled state message.
   state.SetOrderState(*msg);
 
-  newPublishTrigger = true;
+  PublishStateOnTrigger("Order state changed");
 }
 
 void VDA5050Connector::AcceptNewOrder(const Order& new_order) {
@@ -328,14 +328,15 @@ void VDA5050Connector::AGVVelocityCallback(const geometry_msgs::Twist& msg) {
   bool is_driving = (msg.linear.x > 0.01 || msg.linear.y > 0.01 || msg.angular.z > 0.01);
 
   // Trigger a state message publish.
-  if (state.GetDriving() != is_driving) newPublishTrigger = true;
-
-  state.SetDriving(is_driving);
+  if (state.GetDriving() != is_driving) {
+    state.SetDriving(is_driving);
+    PublishStateOnTrigger("Driving field changed");
+  }
 }
 
 void VDA5050Connector::LoadsCallback(const vda5050_msgs::Loads::ConstPtr& msg) {
   state.SetLoads(msg->loads);
-  newPublishTrigger = true;
+  PublishStateOnTrigger("Loads changed");
 }
 
 void VDA5050Connector::PausedCallback(const std_msgs::Bool::ConstPtr& msg) {
@@ -365,7 +366,7 @@ void VDA5050Connector::OperatingModeCallback(const std_msgs::String::ConstPtr& m
         CreateWarningError("Operating Mode", "Invalid operating mode provided.", {error_ref});
     AddInternalError(error);
   }
-  newPublishTrigger = true;
+  PublishStateOnTrigger("Operating mode changed");
 }
 
 void VDA5050Connector::ErrorsCallback(const vda5050_msgs::Errors::ConstPtr& msg) {
@@ -379,7 +380,7 @@ void VDA5050Connector::ErrorsCallback(const vda5050_msgs::Errors::ConstPtr& msg)
   for (const auto& error : msg->errors) {
     state.AppendError(error);
   }
-  newPublishTrigger = true;
+  PublishStateOnTrigger("Errors changed");
 }
 
 void VDA5050Connector::InformationCallback(const vda5050_msgs::Information::ConstPtr& msg) {
@@ -395,18 +396,22 @@ void VDA5050Connector::InteractionZoneCallback(
   state.SetInteractionZones(*msg.get());
 }
 
-void VDA5050Connector::PublishState() {
+void VDA5050Connector::PublishState(std::string const& message_reason) {
   // Set current timestamp of message.
   state.SetTimestamp(connector_utils::GetISOCurrentTimestamp());
   state.SetHeaderId(stateHeaderId);
 
-  statePublisher.publish(state.GetState());
+  vda5050_msgs::State state_msg = state.GetState();
+  vda5050_msgs::Info info;
+  info.infoType = "Message trigger";
+  info.infoLevel = vda5050_msgs::Info::DEBUG;
+  info.infoDescription = message_reason;
+  state_msg.information.push_back(info);
+
+  statePublisher.publish(state_msg);
 
   // Increase header count.
   stateHeaderId++;
-
-  // Reset the publish trigger.
-  newPublishTrigger = false;
 }
 
 void VDA5050Connector::PublishVisualization() {
@@ -443,17 +448,12 @@ void VDA5050Connector::PublishConnection(const bool connected) {
   connHeaderId++;
 }
 
-void VDA5050Connector::PublishStateOnTrigger() {
-  if (!newPublishTrigger) return;
-
-  PublishState();
+void VDA5050Connector::PublishStateOnTrigger(std::string const& message_reason) {
+  PublishState(message_reason);
 
   // Reset the timer.
   stateTimer.stop();
   stateTimer.start();
-
-  // Reset the publish trigger.
-  newPublishTrigger = false;
 }
 
 void VDA5050Connector::AddInternalError(const vda5050_msgs::Error& error) {
@@ -505,8 +505,6 @@ int main(int argc, char** argv) {
     VDA5050Connector.MonitorOrder();
 
     VDA5050Connector.ClearExpiredInternalErrors();
-
-    VDA5050Connector.PublishStateOnTrigger();
 
     ros::spinOnce();
     rate.sleep();
