@@ -114,9 +114,38 @@ bool State::InDeviationRange(vda5050_msgs::Node node) {
   auto vehicle_to_node_dist = sqrt(pow(state.agvPosition.x - node.nodePosition.x, 2) +
                                    pow(state.agvPosition.y - node.nodePosition.y, 2));
 
-  return (vehicle_to_node_dist <= node.nodePosition.allowedDeviationXY) &&
-         (abs(state.agvPosition.theta - node.nodePosition.theta) <=
-             node.nodePosition.allowedDeviationTheta);
+  bool in_dev;
+
+  // If allowed deviations are set, use them; if not, use default
+
+  auto it = find_if(factsheet.protocolFeatures.optionalParameters.begin(),
+      factsheet.protocolFeatures.optionalParameters.end(),
+      [&](const vda5050_msgs::OptionalParameter& op) {
+        return op.parameter == opt_param_allowed_dev;
+      });
+
+  if (it != factsheet.protocolFeatures.optionalParameters.end()) {
+    in_dev = (vehicle_to_node_dist <= node.nodePosition.allowedDeviationXY);
+  } else {
+    // TODO: default by parameter
+    in_dev = (vehicle_to_node_dist <= 0.2);
+  }
+
+  it = find_if(factsheet.protocolFeatures.optionalParameters.begin(),
+      factsheet.protocolFeatures.optionalParameters.end(),
+      [&](const vda5050_msgs::OptionalParameter& op) {
+        return op.parameter == opt_param_allowed_dev_th;
+      });
+
+  if (it != factsheet.protocolFeatures.optionalParameters.end()) {
+    in_dev = in_dev && (abs(state.agvPosition.theta - node.nodePosition.theta) <=
+                           node.nodePosition.allowedDeviationTheta);
+  } else {
+    // TODO: default by parameter
+    in_dev = in_dev && (abs(state.agvPosition.theta - node.nodePosition.theta) <= 0.1);
+  }
+
+  return in_dev;
 }
 
 void State::AcceptNewOrder(const Order& new_order) {

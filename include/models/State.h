@@ -14,6 +14,10 @@
 #include "vda5050_msgs/State.h"
 #include "vda5050_msgs/Visualization.h"
 
+inline const std::string opt_param_allowed_dev = "state.nodeStates.nodePosition.allowedDeviationXY";
+inline const std::string opt_param_allowed_dev_th =
+    "state.nodeStates.nodePosition.allowedDeviationTheta";
+
 /**
  * @brief Wrapper class to add functionalities to the VDA 5050 State messages.
  *
