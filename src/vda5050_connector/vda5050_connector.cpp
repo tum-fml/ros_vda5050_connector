@@ -288,7 +288,7 @@ void VDA5050Connector::OrderCallback(const vda5050_msgs::Order::ConstPtr& msg) {
       ROS_INFO("Sending order update");
 
       // Send the order update.
-      orderPublisher.publish(msg);
+      orderPublisher.publish(new_order.getOrder());
     }
 
   } else {
@@ -313,7 +313,7 @@ void VDA5050Connector::OrderCallback(const vda5050_msgs::Order::ConstPtr& msg) {
       ROS_INFO("Sending new order");
 
       // Send the new order.
-      orderPublisher.publish(msg);
+      orderPublisher.publish(new_order.getOrder());
 
     } else {
       std::string error_msg =
