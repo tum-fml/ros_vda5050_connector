@@ -415,7 +415,7 @@ void VDA5050Connector::AGVVelocityCallback(const geometry_msgs::Twist& msg) {
   state.SetVelocity(vel);
 
   // Set the driving field based on driving velocity.
-  bool is_driving = (msg.linear.x > 0.01 || msg.linear.y > 0.01 || msg.angular.z > 0.01);
+  bool is_driving = (msg.linear.x > 0.005 || msg.linear.y > 0.005 || msg.angular.z > 0.01);
 
   // Trigger a state message publish.
   if (state.GetDriving() != is_driving) newPublishTrigger = true;
@@ -568,6 +568,7 @@ void VDA5050Connector::AddInternalError(const vda5050_msgs::Error& error) {
 
   if (it != internal_errors_stamped.end()) {
     it->timestamp = std::chrono::system_clock::now();
+    it->error = error;
   } else {
     // Add error to the list of internal errors with the timestamp.
     this->internal_errors_stamped.push_back({error, std::chrono::system_clock::now()});

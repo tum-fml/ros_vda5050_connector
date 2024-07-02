@@ -174,6 +174,9 @@ void State::AcceptNewOrder(const Order& new_order) {
     }
   }
 
+  // Errors management
+  ClearErrorWithType("validationError");
+  ClearErrorWithType("orderError");
 }
 
 void State::AddInstantActionStates(vda5050_msgs::InstantAction& instant_action) {
@@ -280,4 +283,8 @@ void State::UpdateOrder(const Order& current_order, const Order& order_update) {
   }
 
   state.orderUpdateId = order_update.GetOrderUpdateId();
+
+  // Errors management
+  ClearErrorWithType("validationError");
+  ClearErrorWithType("orderError");
 }
