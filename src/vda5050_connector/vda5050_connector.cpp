@@ -347,6 +347,16 @@ void VDA5050Connector::InstantActionCallback(const vda5050_msgs::InstantAction::
     instant_action.actions.erase(it);
   }
 
+  // Search for state request
+  // If instant_action contains stateRequest: publish state
+  it = find_if(instant_action.actions.begin(), instant_action.actions.end(),
+      [](const vda5050_msgs::Action& ia) { return ia.actionType == "stateRequest"; });
+  if (it != instant_action.actions.end()) {
+    newPublishTrigger = true;
+    state.SetActionState(it->actionId, "FINISHED");
+    instant_action.actions.erase(it);
+  }
+
   // Forward instant action message to the vehicle.
   if (!instant_action.actions.empty()) {
     ROS_INFO("Sending instant action message");

@@ -128,7 +128,7 @@ bool State::InDeviationRange(vda5050_msgs::Node node) {
     in_dev = (vehicle_to_node_dist <= node.nodePosition.allowedDeviationXY);
   } else {
     // TODO: default by parameter
-    in_dev = (vehicle_to_node_dist <= 0.2);
+    in_dev = (vehicle_to_node_dist <= 0.5);
   }
 
   it = find_if(factsheet.protocolFeatures.optionalParameters.begin(),
@@ -141,9 +141,12 @@ bool State::InDeviationRange(vda5050_msgs::Node node) {
     in_dev = in_dev && (abs(state.agvPosition.theta - node.nodePosition.theta) <=
                            node.nodePosition.allowedDeviationTheta);
   } else {
-    // TODO: default by parameter
-    in_dev = in_dev && (abs(state.agvPosition.theta - node.nodePosition.theta) <= 0.1);
+    in_dev = in_dev && true;
   }
+
+  if (!in_dev)
+    ROS_WARN("Distance to node: %f, theta error: %f", vehicle_to_node_dist,
+        abs(state.agvPosition.theta - node.nodePosition.theta));
 
   return in_dev;
 }
